@@ -23,6 +23,7 @@ class Hexel:
         self.x = 0
         self.y = 0
         self.z = 0
+        self.time = -1
         self.isHalfCell = False
         self.weight = 0
         self.fraction = 1
@@ -33,19 +34,22 @@ class Hexel:
         self.isBorder = False
         self.isHalo = False
         self.clusterIndex = -1
+        self.clusterRECOIndex = -1
         self.sigmaNoise = 0.
         self.thickness = 0.
         if rHit is not None:
-            self.eta = rHit.eta
-            self.phi = rHit.phi
-            self.x = rHit.x
-            self.y = rHit.y
-            self.z = rHit.z
-            self.weight = rHit.energy
-            self.detid = rHit.detid
-            self.layer = rHit.layer
-            self.isHalfCell = rHit.isHalf
-            self.thickness = rHit.thickness
+            self.eta = rHit.eta()
+            self.phi = rHit.phi()
+            self.x = rHit.x()
+            self.y = rHit.y()
+            self.z = rHit.z()
+            self.weight = rHit.energy()
+            self.detid = rHit.detid()
+            self.layer = rHit.layer()
+            self.isHalfCell = rHit.isHalf()
+            self.thickness = rHit.thickness()
+            self.time = rHit.time()
+            self.clusterRECOIndex = rHit.cluster2d()
         if sigmaNoise is not None:
             self.sigmaNoise = sigmaNoise
     def __gt__(self, other_rho):
@@ -84,7 +88,7 @@ class HGCalImagingAlgo:
     # depth of the KDTree before brute force is applied
     leafsize=100000
     # det. layers to consider
-    maxlayer = 40 # should include BH (layers 41 - 52)
+    maxlayer = 52 # should include BH (layers 41 - 52)
     
     def __init__(self, ecut = None, deltac = None, multiclusterRadii = None, minClusters = None, dependSensor = None, verbosityLevel = None):
         # sensor dependance or not
@@ -285,13 +289,13 @@ class HGCalImagingAlgo:
         
         # loop over all hits and create the Hexel structure, skip energies below ecut
         for rHit in rHitsCollection:
-            if (rHit.layer > self.maxlayer): continue # current protection
+            if (rHit.layer() > self.maxlayer): continue # current protection
             # energy treshold dependent on sensor
             sigmaNoise = 0.
             if(self.dependSensor):
                 thickIndex = -1
-                if( rHit.layer <= 40 ): # EE + FH
-                    thickness = rHit.thickness
+                if( rHit.layer() <= 40 ): # EE + FH
+                    thickness = rHit.thickness()
                     if(thickness>99. and thickness<101.): thickIndex=0
                     elif(thickness>199. and thickness<201.): thickIndex=1
                     elif(thickness>299. and thickness<301.): thickIndex=2
@@ -300,12 +304,12 @@ class HGCalImagingAlgo:
                         continue
                 # determine noise for each sensor/subdetector using RecHitCalibration library
                 RecHitCalib = RecHitCalibration()
-                sigmaNoise = 0.001 * RecHitCalib.sigmaNoiseMeV(rHit.layer, thickIndex)
-                if(rHit.energy < ecut*sigmaNoise): continue #this sets the ZS threshold at ecut times the sigma noise for the sensor
+                sigmaNoise = 0.001 * RecHitCalib.sigmaNoiseMeV(rHit.layer(), thickIndex)
+                if(rHit.energy() < ecut*sigmaNoise): continue #this sets the ZS threshold at ecut times the sigma noise for the sensor
             # energy treshold not dependent on sensor
-            if((not self.dependSensor) and rHit.energy < ecut): continue
+            if((not self.dependSensor) and rHit.energy() < ecut): continue
             # organise layers accoring to the sgn(z)
-            layerID = rHit.layer + (rHit.z>0)*(self.maxlayer+1) # +1 - yes or no?
+            layerID = rHit.layer() + (rHit.z()>0)*(self.maxlayer+1) # +1 - yes or no?
             points[layerID].append(Hexel(rHit, sigmaNoise))
 
         return points
