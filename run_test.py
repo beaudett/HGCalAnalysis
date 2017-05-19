@@ -47,6 +47,7 @@ def getHisto(values, hname = "hist", htitle = "hist"):
     #if "int" in type(value[0]) or "float" in type(value[0]):
     #else:
     #    print("Unknown type %s" % type(value[0]))
+    ROOT.SetOwnership(hist,0)
     return hist
 
 def compDeltaVar(items, var = "x", prop = "std"):
@@ -194,6 +195,8 @@ def main():
             #print dZ
             h_mclust_dR_dZ.Fill(dR,dZ)
 
+            addDataPoint(hist_data,"clust_dR_dZ",(dR,dZ))
+
             #continue
             #if len(clusters) < 25: continue
 
@@ -278,12 +281,15 @@ def main():
     '''
 
     #print hist_data
+    hists = []
     for data_name in hist_data:
+        print("Plotting hist for data: %s" %data_name)
         canv = ROOT.TCanvas("canv_" + data_name,data_name,800,600)
-        hist = getHisto(hist_data[data_name])
-        hist.Draw()
+        hist = getHisto(hist_data[data_name],data_name,data_name)
+        hist.Draw("colz")
         canv.Update()
-    q = raw_input("")
+        #hists.append(hist)
+        ROOT.SetOwnership(canv,0)
 
 if __name__ == "__main__":
     main()
