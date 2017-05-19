@@ -2,62 +2,15 @@
 import ROOT, math
 import numpy as np
 from NtupleDataFormat import HGCalNtuple
-
+from helperTools import *
 # The purpose of this file is to demonstrate mainly the objects
 # that are in the HGCalNtuple
 
 z_half = +1
-minE = .5
-min_fbrem = 0.6
+minE = .1
+min_fbrem = 0.1
 #max_dR = 0.3
 max_dR = 3
-
-def addDataPoint(data,key,point):
-    if key in data: data[key].append(point)
-    else: data[key] = [point]
-
-def getHisto(values, hname = "hist", htitle = "hist"):
-
-    nbins = 100
-    # detect value type (1D/2D)
-    #if "tuple" in type(values[0]):
-    if isinstance(values[0], tuple):
-        #hist_type = "2d"
-
-        # define histo
-        xmin = min([val[0] for val in values])
-        xmax = max([val[0] for val in values])
-        ymin = min([val[1] for val in values])
-        ymax = max([val[1] for val in values])
-        hist = ROOT.TH2F(hname,htitle,nbins,xmin,xmax,nbins,ymin,ymax)
-
-        # fill
-        for val in values: hist.Fill(val[0],val[1])
-
-    else:
-        #hist_type = "1d"
-
-        # define histo
-        xmin,xmax  = min(values), max(values)
-        hist = ROOT.TH1F(hname,htitle,nbins,xmin,xmax)
-
-        # fill
-        for val in values: hist.Fill(val)
-
-    #if "int" in type(value[0]) or "float" in type(value[0]):
-    #else:
-    #    print("Unknown type %s" % type(value[0]))
-    ROOT.SetOwnership(hist,0)
-    return hist
-
-def compDeltaVar(items, var = "x", prop = "std"):
-
-    values = [getattr(item,var)() for item in items]
-    #values = [item.x() for item in items]
-    #print values
-
-    res = getattr(np,prop)(values)
-    return res
 
 def main():
     #ntuple = HGCalNtuple("/Users/clange/CERNBox/partGun_PDGid211_x120_E80.0To80.0_NTUP_9.root")
@@ -86,11 +39,13 @@ def main():
     h_mclust_dX = ROOT.TH2F("h_mclust_dX","dX; layer; dX",28,1,29,100,0,10)
     h_mclust_dY = ROOT.TH2F("h_mclust_dY","dY; layer; dY",28,1,29,100,0,10)
 
+    h_mclust_str_E = ROOT.TH2F("h_mclust_str_E","start position; layer; E thr",28,1,29,20,0,2)
+
     ## data storages for hists
     hist_data = {}
 
     for event in ntuple:
-        if tot_nevents >= 100: break
+        if tot_nevents >= 1000: break
 
         if tot_nevents % 100 == 0: print("Event %i" % tot_nevents)
         # print "Event", event.entry()
@@ -164,6 +119,9 @@ def main():
             if dR > max_dR: continue
 
             addDataPoint(hist_data,"clust_dR",dR)
+            addDataPoint(hist_data,"multi_dR_sigV",(dR,multicl.sigvv()))
+            addDataPoint(hist_data,"multi_dR_sigU",(dR,multicl.siguu()))
+
             '''
             print "Here", multicl.energy()
             print multicl.eigenVal1(), multicl.eigenVal2(), multicl.eigenVal3()
@@ -222,7 +180,8 @@ def main():
                     layer_e = sum([clust.energy() for clust in clusts])
                     if layer_e > e_thr:
                         #addDataPoint(hist_data,"shower_start_thrE",(e_thr,lay))
-                        addDataPoint(hist_data,"shower_start_thrE",(lay,e_thr))
+                        addDataPoint(hist_data,"shower_start_thrE",(lay+1,e_thr))
+                        h_mclust_str_E.Fill(lay+1,e_thr)
                         break
 
 
@@ -282,6 +241,10 @@ def main():
     h_mclust_dY.Draw("colz")
 
     canv_dXY.Update()
+
+    canv_LayE = ROOT.TCanvas("canv_LayE","canv",1000,600)
+    h_mclust_str_E.Draw("colz")
+    canv_LayE.Update()
 
     '''
     canv.SetLogy()
