@@ -212,6 +212,20 @@ def main():
                 # rechits in layer
                 rechits_layers[cluster.layer()-1]+=[recHits[rh_idx] for rh_idx in cluster.rechits()]
 
+            ### determine start position
+            for e_thr_step in range(21):
+                e_thr = e_thr_step * 0.1
+
+                for lay,clusts in enumerate(cluster_layers):
+                    if len(clusts) == 0: continue
+
+                    layer_e = sum([clust.energy() for clust in clusts])
+                    if layer_e > e_thr:
+                        #addDataPoint(hist_data,"shower_start_thrE",(e_thr,lay))
+                        addDataPoint(hist_data,"shower_start_thrE",(lay,e_thr))
+                        break
+
+
             for lay,rhits in enumerate(rechits_layers):
                 if len(rhits) == 0: continue
                 dX = compDeltaVar(rhits,'x',"std")
@@ -290,6 +304,8 @@ def main():
         canv.Update()
         #hists.append(hist)
         ROOT.SetOwnership(canv,0)
+
+    q = raw_input("exit")
 
 if __name__ == "__main__":
     main()
