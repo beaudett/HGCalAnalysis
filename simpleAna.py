@@ -6,11 +6,15 @@ from helperTools import *
 # The purpose of this file is to demonstrate mainly the objects
 # that are in the HGCalNtuple
 
+max_events = 100
+
 z_half = +1
-minE = .1
-min_fbrem = 0.1
+minE = .5
+min_pt = 2
+
+min_fbrem = 0.9
 #max_dR = 0.3
-max_dR = 3
+max_dR = 0.9
 
 def main():
     #ntuple = HGCalNtuple("/Users/clange/CERNBox/partGun_PDGid211_x120_E80.0To80.0_NTUP_9.root")
@@ -41,36 +45,32 @@ def main():
 
     h_mclust_str_E = ROOT.TH2F("h_mclust_str_E","start position; layer; E thr",28,1,29,20,0,2)
 
+    #h_Event = ROOT.TH3F("h_Event","event; x; y",100,-80,80,100,-80,80,30,300,330)
     ## data storages for hists
+    mgr_Event_X = ROOT.TMultiGraph("ev_x","X good")
+    mgr_Event_Y = ROOT.TMultiGraph("ev_y","Y good")
+    mgr_Event2_X = ROOT.TMultiGraph("ev2_x","X bad")
+    mgr_Event2_Y = ROOT.TMultiGraph("ev2_y","Y bad")
+
+    gr_Event = ROOT.TGraph2D(); gr_Event.SetTitle("good axisZ"); gr_Event.SetMarkerStyle(20)
+    gr_Event2 = ROOT.TGraph2D(); gr_Event.SetTitle("bad axisZ"); gr_Event2.SetMarkerStyle(20)
+    gr_cnt = 0
+    gr_cnt2 = 0
+
     hist_data = {}
 
+    col_cnt = 0
+
     for event in ntuple:
-        if tot_nevents >= 1000: break
+        if tot_nevents >= max_events: break
 
         if tot_nevents % 100 == 0: print("Event %i" % tot_nevents)
         # print "Event", event.entry()
         tot_nevents += 1
-        '''
-        if (ntuple.hasRawRecHits()):
-            recHitsRaw = event.recHits("rechit_raw")
-            tot_rechit_raw += len(recHitsRaw)
-        layerClusters = event.layerClusters()
-        tot_cluster2d += len(layerClusters)
-        simClusters = event.simClusters()
-        tot_simcluster += len(simClusters)
-        pfClusters = event.pfClusters()
-        tot_pfcluster += len(pfClusters)
-        pfClusters = event.pfClusters()
-        tot_pfcluster += len(pfClusters)
-        caloParts = event.caloParticles()
-        tot_calopart += len(caloParts)
-        tracks = event.tracks()
-        tot_track += len(tracks)
-        '''
+
         genParts = event.genParticles()
         #tot_genpart += len(genParts)
 
-        has_brem = False
         found_part = False
         for part in genParts:
 
@@ -81,16 +81,8 @@ def main():
 
             found_part = True
             tot_genpart += 1
+            break
 
-            '''
-            #print part.fbrem()
-            has_brem = True
-            tot_genpart += 1
-
-            print part.energy(), part.pt(), part.gen(), part.fbrem(), part.eta(), (part.eta() * z_half < 0)
-            # store particle in part
-            '''
-        #if has_brem: continue
         if not found_part: continue
 
         multiClusters = event.multiClusters()
@@ -104,56 +96,102 @@ def main():
         recHits = event.recHits()
         tot_rechit += len(recHits)
 
+        #print part.posx()[0],part.posy()[0],part.posz()[0]
 
-        for multicl in multiClusters:
+        for i_mcl, multicl in enumerate(multiClusters):
             if multicl.energy() < minE: continue
+            if multicl.pt() < min_pt: continue
             if multicl.eta() * part.eta() < 0: continue
+
+            #if abs(multicl.pcaAxisZ()) > 0.4: continue
 
             if len(multicl.cluster2d()) < 3: continue
 
+            #if abs(multicl.pcaAxisZ()) < 0.4: continue
+
             dR =  math.hypot(multicl.eta()-part.eta(), multicl.phi()-part.phi())
+
+            '''
             h_mclust_dR.Fill(dR)
-
-            tot_multiclus += 1
-
-            if dR > max_dR: continue
-
             addDataPoint(hist_data,"clust_dR",dR)
+
+            #drho = math.hypot(multicl.slopeX()-part.posx()[0],multicl.slopeY()-part.posy()[0])
+            drho = calcDeltaRho(part,multicl)
+            #print drho,drho2
+
+            addDataPoint(hist_data,"clust_drho",drho)
+            addDataPoint(hist_data,"clust_dR_drho",(dR,drho))
+
             addDataPoint(hist_data,"multi_dR_sigV",(dR,multicl.sigvv()))
             addDataPoint(hist_data,"multi_dR_sigU",(dR,multicl.siguu()))
-
-            '''
-            print "Here", multicl.energy()
-            print multicl.eigenVal1(), multicl.eigenVal2(), multicl.eigenVal3()
-            #if multicl.pcaAxisX() < multicl.pcaAxisY():
-            print multicl.pcaAxisX(), multicl.pcaAxisY(), multicl.pcaAxisZ()
-            print multicl.pcaPosX(), multicl.pcaPosY(), multicl.pcaPosZ()
-
-            print multicl.phi(), multicl.eta()
             '''
 
-            '''
-            for clust_idx in multicl.cluster2d():
-                clust = layerClusters[clust_idx]
-                if clust.layer() > 28: continue
+            if dR > max_dR: continue
+            tot_multiclus += 1
 
-                #print clust.layer(),
-                #print clust, layerClusters[clust].phi(), layerClusters[clust].eta()
-                clust_dR =  math.hypot(multicl.eta()-clust.eta(), multicl.phi()-clust.phi())
-                h_clust_dR.Fill(clust_dR)
-                h_clust_dEta.Fill(clust.phi()-multicl.phi())
-                h_clust_dPhi.Fill(clust.eta()-multicl.eta())
-            '''
+            addDataPoint(hist_data,"mcl_axisZ",multicl.pcaAxisZ())
+            #if abs(multicl.pcaAxisZ()) > 0.4: continue
 
             ## play with cluster layers
             clusters = [layerClusters[clust_idx] for clust_idx in multicl.cluster2d()]
             #print len(clusters), " clusters in multi"
+
+            # plot event display
+            #gr_Event = ROOT.TGraph2D()
+            gr_Event_X = ROOT.TGraph()
+            gr_Event_Y = ROOT.TGraph()
+
+            #col_frac = multicl.pt()/part.pt()
+            #col_frac = multicl.pt()/multiClusters[0].pt()
+            #col_frac = i_mcl/len(multiClusters)
+            col_frac = col_cnt/60.
+            col = ROOT.gStyle.GetColorPalette(int(col_frac * 255))
+            col_cnt += 10
+            gr_Event_X.SetMarkerColor(col)
+            gr_Event_X.SetMarkerStyle(20)
+            gr_Event_Y.SetMarkerColor(col)
+            gr_Event_Y.SetMarkerStyle(20)
+
+            for i,cluster in enumerate(clusters):
+                #gr_Event.SetPoint(i+1,cluster.x(),cluster.y(),cluster.z())
+                gr_Event_Y.SetPoint(i,cluster.y(),cluster.z())
+                gr_Event_X.SetPoint(i,cluster.x(),cluster.z())
+
+                if abs(multicl.pcaAxisZ()) > 0.5:
+                    gr_Event.SetPoint(gr_cnt,cluster.z(),cluster.x(),cluster.y())
+                    gr_cnt+=1
+                else:
+                    gr_Event2.SetPoint(gr_cnt2,cluster.z(),cluster.x(),cluster.y())
+                    gr_cnt2+=1
+
+            if abs(multicl.pcaAxisZ()) > 0.5:
+                mgr_Event_X.Add(gr_Event_X)
+                mgr_Event_Y.Add(gr_Event_Y)
+            else:
+                mgr_Event2_X.Add(gr_Event_X)
+                mgr_Event2_Y.Add(gr_Event_Y)
+
+            break
+
             #print compDeltaVar(clusters,'z',"mean"),
             dZ = compDeltaVar(clusters,'z',"std")
-            #print dZ
+            addDataPoint(hist_data,"clust_dR_dZ",(dR,dZ))
             h_mclust_dR_dZ.Fill(dR,dZ)
 
-            addDataPoint(hist_data,"clust_dR_dZ",(dR,dZ))
+            dX = compDeltaVar(clusters,'x',"std")
+            addDataPoint(hist_data,"clust_dR_dX",(dR,dX))
+            dY = compDeltaVar(clusters,'y',"std")
+            addDataPoint(hist_data,"clust_dR_dY",(dR,dY))
+            addDataPoint(hist_data,"clust_dX_dY",(dX,dY))
+
+
+            # sigma EtaEta
+            dEta = compDeltaVar(clusters,'eta',"std")
+            addDataPoint(hist_data,"clust_dEta_sigU",(dEta,multicl.siguu()))
+            addDataPoint(hist_data,"clust_dEta_sigV",(dEta,multicl.sigvv()))
+
+            sigmaEtaEta = 0
+            #for rh in [recHits[rh_idx] for rh_idx in cluster.rechits()
 
             #continue
             #if len(clusters) < 25: continue
@@ -163,6 +201,14 @@ def main():
             #cluster_layers = [28*[]]
             #rechits_layers = [28*[]]
 
+            # count number of layers
+            n_lay = len(set([cluster.layer() for cluster in clusters if cluster.layer() < 29]))
+            #print n_lay
+            addDataPoint(hist_data,"clust_Zax_Nlay",(multicl.pcaAxisZ(),n_lay))
+
+            ##
+            # Fill layer-wise cluster/rechit collections
+            ##
             for cluster in clusters:
                 if cluster.layer() > 28: continue
                 #if cluster.energy() < minE/100.: continue
@@ -192,7 +238,6 @@ def main():
 
                 h_mclust_dX.Fill(lay+1,dX)
                 h_mclust_dY.Fill(lay+1,dY)
-
             '''
             for lay,clusts in enumerate(cluster_layers):
                 if len(clusts) == 0: continue
@@ -228,6 +273,21 @@ def main():
     print "On average %f calo particles" % (float(tot_calopart) / tot_nevents)
     print "On average %f tracks" % (float(tot_track) / tot_nevents)
 
+    canv_Event = ROOT.TCanvas("canv_Event","Event",1000,800)
+    canv_Event.Divide(2,2)
+    canv_Event.cd(1);    mgr_Event_X.Draw("Ap")
+    canv_Event.cd(2);    mgr_Event_Y.Draw("Ap")
+    canv_Event.cd(3);    mgr_Event2_X.Draw("Ap")
+    canv_Event.cd(4);    mgr_Event2_Y.Draw("Ap")
+    canv_Event.Update()
+
+    canv_Event2 = ROOT.TCanvas("canv_Event2","Event",1000,800)
+    canv_Event2.Divide(2,1)
+    canv_Event2.cd(1);    gr_Event.Draw("pcol")
+    canv_Event2.cd(2);    gr_Event2.Draw("pcol")
+    canv_Event2.Update()
+
+    '''
     canv_dR = ROOT.TCanvas("canv_dR","canv",800,600)
     h_mclust_dR_dZ.Draw("colz")
     canv_dR.Update()
@@ -245,18 +305,8 @@ def main():
     canv_LayE = ROOT.TCanvas("canv_LayE","canv",1000,600)
     h_mclust_str_E.Draw("colz")
     canv_LayE.Update()
-
     '''
-    canv.SetLogy()
-
-    canv.cd(1)
-    h_mclust_dR.Draw()
-    #h_clust_dEta.Draw()
-    canv.cd(2)
-    #h_clust_dPhi.Draw()
-    h_clust_dR.Draw()
-    '''
-
+    
     #print hist_data
     hists = []
     for data_name in hist_data:
