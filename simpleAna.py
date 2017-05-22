@@ -6,7 +6,7 @@ from helperTools import *
 # The purpose of this file is to demonstrate mainly the objects
 # that are in the HGCalNtuple
 
-max_events = 100
+max_events = 40
 
 z_half = +1
 minE = .5
@@ -14,7 +14,7 @@ min_pt = 2
 
 min_fbrem = 0.9
 #max_dR = 0.3
-max_dR = 0.9
+max_dR = 0.3
 
 def main():
     #ntuple = HGCalNtuple("/Users/clange/CERNBox/partGun_PDGid211_x120_E80.0To80.0_NTUP_9.root")
@@ -152,6 +152,32 @@ def main():
             gr_Event_Y.SetMarkerColor(col)
             gr_Event_Y.SetMarkerStyle(20)
 
+            rh_cnt = 0
+
+            for i,cluster in enumerate(clusters):
+                for j,rh_idx in enumerate(cluster.rechits()):
+                    rechit = recHits[rh_idx]
+
+                    #ind = i * len(cluster.rechits()) + j
+                    gr_Event_Y.SetPoint(rh_cnt,rechit.y(),rechit.z())
+                    gr_Event_X.SetPoint(rh_cnt,rechit.x(),rechit.z())
+                    rh_cnt += 1
+
+                    if abs(multicl.pcaAxisZ()) > 0.5:
+                        gr_Event.SetPoint(gr_cnt,rechit.z(),rechit.x(),rechit.y())
+                        gr_cnt+=1
+                    else:
+                        gr_Event2.SetPoint(gr_cnt2,rechit.z(),rechit.x(),rechit.y())
+                        gr_cnt2+=1
+
+            if abs(multicl.pcaAxisZ()) > 0.5:
+                mgr_Event_X.Add(gr_Event_X)
+                mgr_Event_Y.Add(gr_Event_Y)
+            else:
+                mgr_Event2_X.Add(gr_Event_X)
+                mgr_Event2_Y.Add(gr_Event_Y)
+
+            '''
             for i,cluster in enumerate(clusters):
                 #gr_Event.SetPoint(i+1,cluster.x(),cluster.y(),cluster.z())
                 gr_Event_Y.SetPoint(i,cluster.y(),cluster.z())
@@ -170,7 +196,7 @@ def main():
             else:
                 mgr_Event2_X.Add(gr_Event_X)
                 mgr_Event2_Y.Add(gr_Event_Y)
-
+            '''
             break
 
             #print compDeltaVar(clusters,'z',"mean"),
@@ -257,7 +283,6 @@ def main():
 
             #print
             '''
-
 
         # for genPart in genParts:
         #     print tot_nevents, "genPart pt:", genPart.pt()
