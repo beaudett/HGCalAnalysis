@@ -53,9 +53,12 @@ def main():
     mgr_Event2_Y = ROOT.TMultiGraph("ev2_y","Y bad")
 
     gr_Event = ROOT.TGraph2D(); gr_Event.SetTitle("good axisZ"); gr_Event.SetMarkerStyle(20)
-    gr_Event2 = ROOT.TGraph2D(); gr_Event.SetTitle("bad axisZ"); gr_Event2.SetMarkerStyle(20)
+    gr_Event2 = ROOT.TGraph2D(); gr_Event2.SetTitle("bad axisZ"); gr_Event2.SetMarkerStyle(20)
     gr_cnt = 0
     gr_cnt2 = 0
+
+    gr2ds = []
+    gr2d_2s = []
 
     hist_data = {}
 
@@ -140,6 +143,8 @@ def main():
             #gr_Event = ROOT.TGraph2D()
             gr_Event_X = ROOT.TGraph()
             gr_Event_Y = ROOT.TGraph()
+            gr2d = ROOT.TGraph2D()
+            gr2d_2 = ROOT.TGraph2D()
 
             #col_frac = multicl.pt()/part.pt()
             #col_frac = multicl.pt()/multiClusters[0].pt()
@@ -152,6 +157,11 @@ def main():
             gr_Event_Y.SetMarkerColor(col)
             gr_Event_Y.SetMarkerStyle(20)
 
+            gr2d.SetMarkerColor(col)
+            gr2d.SetMarkerStyle(20)
+            gr2d_2.SetMarkerColor(col)
+            gr2d_2.SetMarkerStyle(20)
+
             rh_cnt = 0
 
             for i,cluster in enumerate(clusters):
@@ -159,23 +169,28 @@ def main():
                     rechit = recHits[rh_idx]
 
                     #ind = i * len(cluster.rechits()) + j
-                    gr_Event_Y.SetPoint(rh_cnt,rechit.y(),rechit.z())
-                    gr_Event_X.SetPoint(rh_cnt,rechit.x(),rechit.z())
-                    rh_cnt += 1
+                    gr_Event_Y.SetPoint(rh_cnt,rechit.x(),rechit.z())
+                    gr_Event_X.SetPoint(rh_cnt,rechit.x(),rechit.y())
 
                     if abs(multicl.pcaAxisZ()) > 0.5:
                         gr_Event.SetPoint(gr_cnt,rechit.z(),rechit.x(),rechit.y())
+                        gr2d.SetPoint(rh_cnt,rechit.z(),rechit.x(),rechit.y())
                         gr_cnt+=1
                     else:
                         gr_Event2.SetPoint(gr_cnt2,rechit.z(),rechit.x(),rechit.y())
+                        gr2d_2.SetPoint(rh_cnt,rechit.z(),rechit.x(),rechit.y())
                         gr_cnt2+=1
+
+                    rh_cnt += 1
 
             if abs(multicl.pcaAxisZ()) > 0.5:
                 mgr_Event_X.Add(gr_Event_X)
                 mgr_Event_Y.Add(gr_Event_Y)
+                gr2ds.append(gr2d)
             else:
                 mgr_Event2_X.Add(gr_Event_X)
                 mgr_Event2_Y.Add(gr_Event_Y)
+                gr2d_2s.append(gr2d_2)
 
             '''
             for i,cluster in enumerate(clusters):
@@ -308,8 +323,15 @@ def main():
 
     canv_Event2 = ROOT.TCanvas("canv_Event2","Event",1000,800)
     canv_Event2.Divide(2,1)
-    canv_Event2.cd(1);    gr_Event.Draw("pcol")
-    canv_Event2.cd(2);    gr_Event2.Draw("pcol")
+    canv_Event2.cd(1);
+    gr_Event.Draw("p")
+    #gr2ds[0].Draw("p")
+    for gr in gr2ds:
+        gr.Draw("psame")
+    canv_Event2.cd(2);
+    gr_Event2.Draw("pcol")
+    for gr in gr2d_2s:
+        gr.Draw("psame")
     canv_Event2.Update()
 
     '''
@@ -331,7 +353,7 @@ def main():
     h_mclust_str_E.Draw("colz")
     canv_LayE.Update()
     '''
-    
+
     #print hist_data
     hists = []
     for data_name in hist_data:
