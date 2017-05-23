@@ -8,11 +8,14 @@ def addDataPoint(data,key,point):
 
 def getHisto(values, hname = "hist", htitle = "hist"):
 
-    nbins = 100
+    #nbins = 100
+    nbins = len(values)*10/10
+
     # detect value type (1D/2D)
     #if "tuple" in type(values[0]):
     if isinstance(values[0], tuple):
         #hist_type = "2d"
+        nbins /= 2
 
         # define histo
         xmin = min([val[0] for val in values])
@@ -48,3 +51,16 @@ def compDeltaVar(items, var = "x", prop = "std"):
 
     res = getattr(np,prop)(values)
     return res
+
+def calcDeltaRho(particle,cluster):
+
+    drho = 999
+
+    for layer in range(1,len(particle.posz())):
+        if abs( particle.posz()[layer] - cluster.pcaPosZ() ) < 2:
+            drho = math.hypot(cluster.slopeX()-particle.posx()[layer],cluster.slopeY()-particle.posy()[layer])
+
+    return drho
+
+    ### LATER
+    ## cluster center: pcaPosZ
