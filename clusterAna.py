@@ -98,25 +98,36 @@ def main(fname = "hgcalNtuple-El15-100_noReClust.root"):
             ## Rechit plots
             rechits = []
             for cluster in clusters:
-                rechits += [recHits[rh_idx] for rh_idx in cluster.rechits()]
+                rechits += [recHits[rh_idx] for rh_idx in cluster.rechits()]# if recHits[rh_idx].flags() == 0]
+                #if cluster.z() == 0:
+                #    print rechits
 
             rh_coords = [(rh.x(),rh.y(),rh.z()) for rh in rechits]
 
             gr_rh_XYZ = ROOT.TGraph2D(); gr_rh_XYZ.SetMarkerStyle(20)
+            gr_rh_XYZ_all = ROOT.TGraph2D(); gr_rh_XYZ_all.SetMarkerStyle(24); gr_rh_XYZ_all.SetMarkerColor(2)
             gr_rh_XZ = ROOT.TGraph(); gr_rh_XZ.SetMarkerStyle(20)
             gr_rh_YZ = ROOT.TGraph(); gr_rh_YZ.SetMarkerStyle(20)
 
-            hXZ = ROOT.TH2F("hXZ_event_%i"%event.event(),"XZ rechits",120,320,350,150,-150,150)
+            hXZ = ROOT.TH2F("hXZ_event_%i"%event.event(),"XZ rechits; Z; X",120,320,350,150,-150,150)
 
             #for i,rh in enumerate(clusters):
+            rh_cnt = 0
             for i,rh in enumerate(rechits):
 
                 if rh.layer() > 28: continue
                 #if rh.detid() > 1.2 * 10e9: continue
 
-                gr_rh_XYZ.SetPoint(i,rh.z(),rh.x(),rh.y())
-                gr_rh_XZ.SetPoint(i,rh.z(),rh.x())
-                gr_rh_YZ.SetPoint(i,rh.z(),rh.y())
+                gr_rh_XYZ_all.SetPoint(i,rh.z(),rh.x(),rh.y())
+
+                if rh.flags() > 2: print "here"
+                if rh.flags() > 0: continue
+
+                gr_rh_XYZ.SetPoint(rh_cnt,rh.z(),rh.x(),rh.y())
+                gr_rh_XZ.SetPoint(rh_cnt,rh.z(),rh.x())
+                gr_rh_YZ.SetPoint(rh_cnt,rh.z(),rh.y())
+
+                rh_cnt += 1
 
                 hXZ.Fill(rh.z(),rh.x(),rh.energy())
 
@@ -125,15 +136,16 @@ def main(fname = "hgcalNtuple-El15-100_noReClust.root"):
                     addDataPoint(hist_data,"gd_mcl_rh_dR",dr)
                     drho = math.hypot(multicl.slopeX()-rh.x(), multicl.slopeY()-rh.y())
                     addDataPoint(hist_data,"gd_mcl_rh_drho",drho)
-                    #addDataPoint(hist_data,"gd_mcl_rh_drho_E",(drho,rh.layer()))
-                    addDataPoint(hist_data,"gd_mcl_rh_drho_E",(drho,rh.z()))
+                    addDataPoint(hist_data,"gd_mcl_rh_drho_E",(drho,rh.pt()))
                 else:
                     dr = math.hypot(multicl.eta()-rh.eta(), multicl.phi()-rh.phi())
                     addDataPoint(hist_data,"bad_mcl_rh_dR",dr)
                     drho = math.hypot(multicl.slopeX()-rh.x(), multicl.slopeY()-rh.y())
                     addDataPoint(hist_data,"bad_mcl_rh_drho",drho)
-                    #addDataPoint(hist_data,"bad_mcl_rh_drho_E",(drho,rh.layer()))
-                    addDataPoint(hist_data,"bad_mcl_rh_drho_E",(drho,rh.z()))
+                    addDataPoint(hist_data,"bad_mcl_rh_drho_E",(drho,rh.pt()))
+
+                    #addDataPoint(hist_data,"bad_mcl_rh_drho_Flag",(drho,rh.flags()))
+                    addDataPoint(hist_data,"bad_rh_Flag",rh.flags())
 
             grtitle = "axisZ %0.2f, event %i" % (abs(multicl.pcaAxisZ()),event.event())
 
@@ -153,17 +165,32 @@ def main(fname = "hgcalNtuple-El15-100_noReClust.root"):
                 grtitle = "Bad " + grtitle
                 grname = "grxyz_bad_event_%i" % event.event()
 
-            gr_rh_XYZ.SetTitle(grtitle)
-            gr_rh_XYZ.SetName(grname)
+            gr_rh_XYZ_all.SetTitle(grtitle)
+            gr_rh_XYZ_all.SetName(grname)
 
             cname = grname.replace("gr","c")
             canv = ROOT.TCanvas(cname,"Event",1000,800)
             canv.Divide(2,2)
 
-            canv.cd(1); gr_rh_XYZ.Draw("p")
+            canv.cd(1); gr_rh_XYZ_all.Draw("p"); gr_rh_XYZ.Draw("p same")
             canv.cd(2); gr_rh_XZ.Draw("ap")
             canv.cd(3); gr_rh_YZ.Draw("ap")
             canv.cd(4); hXZ.Draw("colz")
+
+            # label axes
+            '''
+            gr_rh_XYZ_all.GetXaxis().SetTitle("x")
+            gr_rh_XYZ_all.GetYaxis().SetTitle("y")
+            gr_rh_XYZ_all.GetZaxis().SetTitle("z")
+            gr_rh_XYZ.GetXaxis().SetTitle("x")
+            gr_rh_XYZ.GetYaxis().SetTitle("y")
+            gr_rh_XYZ.GetZaxis().SetTitle("z")
+            '''
+
+            gr_rh_XZ.GetXaxis().SetTitle("Z")
+            gr_rh_XZ.GetYaxis().SetTitle("X")
+            gr_rh_YZ.GetXaxis().SetTitle("Z")
+            gr_rh_YZ.GetYaxis().SetTitle("X")
 
             canv.Update()
             tfile.cd()
@@ -198,11 +225,12 @@ if __name__ == "__main__":
     #if '-b' in sys.argv: sys.argv = [sys.argv[0]]
 
     if len(sys.argv) > 1:
-        if '-b' in sys.argv: main()
+        if '-b' in sys.argv:
+            fname = sys.argv[1]
         else:
             fname = sys.argv[1]
-            print '# Input file is', fname
-            main(fname)
+        print '# Input file is', fname
+        main(fname)
     else:
         print("No input files given!")
         main()
